@@ -24,3 +24,5 @@ ordered_gold = ORDER gold_count BY Gold DESC, Region ASC;
 
 -- Store the output
 STORE ordered_gold INTO '/output/task1' USING PigStorage(',');
+
+DUMP ordered_gold;
