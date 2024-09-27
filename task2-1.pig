@@ -27,14 +27,16 @@ silver_count = FOREACH silver_grouped GENERATE group AS Region, COUNT(silver_med
 -- Join the gold and silver counts
 combined_medals = JOIN gold_count BY Region FULL OUTER, silver_count BY Region;
 
--- Handle missing values (if a region has no silver medals, keep gold count only)
-medals_output = FOREACH combined_medals GENERATE
+-- Use COALESCE to handle null values and filter out regions with zero gold and silver medals
+filtered_medals = FOREACH combined_medals GENERATE 
     (gold_count::Region IS NOT NULL ? gold_count::Region : silver_count::Region) AS Region,
-    (Gold IS NOT NULL ? Gold : 0) AS Gold,
-    (Silver IS NOT NULL ? Silver : 0) AS Silver;
+    (gold_count::Gold IS NOT NULL ? gold_count::Gold : 0) AS Gold,
+    (silver_count::Silver IS NOT NULL ? silver_count::Silver : 0) AS Silver;
 
--- Order by gold (descending) and region (ascending)
-ordered_medals = ORDER medals_output BY Gold DESC, Region ASC;
+non_zero_medals = FILTER filtered_medals BY (Gold > 0 OR Silver > 0);
+
+-- Order by gold (descending), silver (descending), and region (ascending)
+ordered_medals = ORDER non_zero_medals BY Gold DESC, Silver DESC, Region ASC;
 
 -- Store the output
 STORE ordered_medals INTO '/output/task2-1' USING PigStorage(',');
