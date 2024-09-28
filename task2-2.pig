@@ -32,17 +32,21 @@ combined_medals = JOIN gold_count BY Region FULL OUTER, silver_count BY Region;
 
 -- Use UDF to fill missing silver counts with 0
 final_medals = FOREACH combined_medals GENERATE 
-    FLATTEN(myudf.fill_missing_silver(
+    myudf.add_zero(
         (gold_count::Region IS NOT NULL ? gold_count::Region : silver_count::Region),
-        (gold_count::Gold IS NOT NULL ? gold_count::Gold : 0),
-        (silver_count::Silver IS NOT NULL ? silver_count::Silver : 0)
-    ));
-
--- Print the result to the console
-DUMP final_medals;
+        (Gold IS NOT NULL ? Gold : 0),
+        (Silver IS NOT NULL ? Silver : 0)
+    );
+final_medals = FOREACH combined_medals GENERATE 
+    myudf.add_zero(
+        gold_count::Region,
+        silver_count::Region,
+        gold_count,
+        silver_count
+    );
 
 -- Order by gold (descending), silver (descending), and region (ascending)
-sorted_medals = ORDER final_medals BY gold DESC, silver DESC, region ASC;
+sorted_medals = ORDER final_medals BY Gold DESC, Silver DESC, Region ASC;
 
 -- Store the output
 STORE sorted_medals INTO '/output/task2-2' USING PigStorage(',');

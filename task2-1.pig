@@ -1,4 +1,6 @@
--- Task 2-1: Gold and Silver Medal Counts by Region
+-- Task 2-2: Gold and Silver Medal Counts by Region (with UDF for missing values)
+   %declare OUTPUT_DIR '/output/task2-1'
+   fs -rm -r $OUTPUT_DIR
 
 -- Load the necessary datasets
 noc_region = LOAD '/input/noc_region.csv' USING PigStorage(',') AS (id:int, noc:chararray, region_name:chararray);
@@ -26,17 +28,12 @@ silver_count = FOREACH silver_grouped GENERATE group AS Region, COUNT(silver_med
 
 -- Join the gold and silver counts
 combined_medals = JOIN gold_count BY Region FULL OUTER, silver_count BY Region;
+-- Handle missing values and generate final medals count
+final_medals = FOREACH combined_medals GENERATE 
+    (gold_count::Region IS NOT NULL ? gold_count::Region : silver_count::Region) AS region,
+    (gold_count::Gold IS NOT NULL ? (chararray)gold_count::Gold : ' ') AS gold,
+    (silver_count::Silver IS NOT NULL ? (chararray)silver_count::Silver : ' ') AS silver;
 
--- Use COALESCE to handle null values and filter out regions with zero gold and silver medals
-filtered_medals = FOREACH combined_medals GENERATE 
-    (gold_count::Region IS NOT NULL ? gold_count::Region : silver_count::Region) AS Region,
-    (gold_count::Gold IS NOT NULL ? gold_count::Gold : 0) AS Gold,
-    (silver_count::Silver IS NOT NULL ? silver_count::Silver : 0) AS Silver;
-
-non_zero_medals = FILTER filtered_medals BY (Gold > 0 OR Silver > 0);
-
--- Order by gold (descending), silver (descending), and region (ascending)
-ordered_medals = ORDER non_zero_medals BY Gold DESC, Silver DESC, Region ASC;
 
 -- Store the output
-STORE ordered_medals INTO '/output/task2-1' USING PigStorage(',');
+STORE final_medals INTO '/output/task2-1' USING PigStorage(',');
