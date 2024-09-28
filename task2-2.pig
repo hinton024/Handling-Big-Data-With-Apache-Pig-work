@@ -32,17 +32,10 @@ combined_medals = JOIN gold_count BY Region FULL OUTER, silver_count BY Region;
 
 -- Use UDF to fill missing silver counts with 0
 final_medals = FOREACH combined_medals GENERATE 
-    myudf.add_zero(
+    myudf.fill_missing_silver(
         (gold_count::Region IS NOT NULL ? gold_count::Region : silver_count::Region),
         (Gold IS NOT NULL ? Gold : 0),
         (Silver IS NOT NULL ? Silver : 0)
-    );
-final_medals = FOREACH combined_medals GENERATE 
-    myudf.add_zero(
-        gold_count::Region,
-        silver_count::Region,
-        gold_count,
-        silver_count
     );
 
 -- Order by gold (descending), silver (descending), and region (ascending)
